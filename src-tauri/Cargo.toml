@@ -1,0 +1,31 @@
+[package]
+name = "vessel-shell"
+version = "0.1.0"
+description = "VESSEL Desktop Overlay Shell"
+edition = "2021"
+
+[lib]
+name = "vessel_core"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vessel"
+path = "src/main.rs"
+test = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon", "image-ico", "image-png"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.8", features = ["ws"] }
+tower-http = { version = "0.6", features = ["cors"] }
+futures-util = "0.3"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+reqwest = { version = "0.13", features = ["json"] }
+tokio-tungstenite = "0.29"

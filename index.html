@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VESSEL — Virtual Entity Surface</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      body.browser-preview {
+        background: #181920;
+      }
+
+      #avatar-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        display: block;
+      }
+
+      /* Dev-only backdrop that proves the WebGL canvas composites as fully transparent. */
+      body.checkerboard {
+        background: repeating-conic-gradient(#9a9a9a 0% 25%, #d4d4d4 0% 50%) 0 0 / 32px 32px;
+      }
+
+      #debug-panel {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px;
+        border-radius: 10px;
+        background: rgba(16, 18, 24, 0.78);
+        color: #e8eaef;
+        font: 12px/1.45 system-ui, "Segoe UI", sans-serif;
+        user-select: none;
+        cursor: move;
+        max-width: calc(100vw - 44px);
+      }
+
+      #debug-panel .row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      #debug-panel button {
+        padding: 4px 8px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.06);
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      #debug-panel button:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      #debug-panel button.active {
+        background: #3f6ea8;
+        border-color: #6f9bd2;
+      }
+
+      #debug-panel kbd {
+        opacity: 0.6;
+        font: 10px/1 system-ui, sans-serif;
+      }
+
+      #drag-handle {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 36px;
+        z-index: 5;
+        cursor: move;
+        -webkit-app-region: drag;
+      }
+
+      #status {
+        max-width: 320px;
+        overflow-wrap: anywhere;
+        font-size: 11px;
+        opacity: 0.9;
+      }
+
+      #debug-panel.collapsed .row {
+        display: none;
+      }
+
+      #panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #toggle-panel-button {
+        padding: 2px 6px;
+        font-size: 11px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      #panel-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="drag-handle" data-tauri-drag-region title="Drag to move avatar"></div>
+    <canvas id="avatar-canvas"></canvas>
+    <div id="debug-panel">
+      <div id="panel-header">
+        <div id="status">Initializing…</div>
+        <div id="panel-actions">
+          <button type="button" id="zoom-out-button" title="Zoom out model" aria-label="Zoom out model">Zoom −</button>
+          <button type="button" id="zoom-in-button" title="Zoom in model" aria-label="Zoom in model">Zoom +</button>
+          <button type="button" id="zoom-model-button" title="Show the entire model" aria-pressed="false">Full body</button>
+          <button type="button" id="toggle-panel-button" title="Toggle panel (H)">−</button>
+        </div>
+      </div>
+      <div class="row">
+        <button type="button" id="choose-model-button">Choose VRM…</button>
+        <input type="file" id="model-file-input" accept=".vrm" hidden />
+      </div>
+      <div class="row">
+        <button type="button" data-expression="neutral" class="active">Neutral <kbd>1</kbd></button>
+        <button type="button" data-expression="happy">Happy <kbd>2</kbd></button>
+        <button type="button" data-expression="angry">Angry <kbd>3</kbd></button>
+        <button type="button" data-expression="sorrow">Sorrow <kbd>4</kbd></button>
+        <button type="button" data-expression="surprised">Surprised <kbd>5</kbd></button>
+        <button type="button" data-expression="relaxed">Relaxed <kbd>6</kbd></button>
+      </div>
+      <div class="row">
+        <button type="button" data-framing="face">Face</button>
+        <button type="button" data-framing="bust" class="active">Bust</button>
+        <button type="button" data-framing="half_body">Half</button>
+        <button type="button" data-framing="full_body">Full</button>
+      </div>
+      <div class="row">
+        <button type="button" id="blink-button">Blink <kbd>B</kbd></button>
+        <button type="button" id="talk-button">Talk test <kbd>T</kbd></button>
+        <button type="button" id="speak-demo-button">Speak demo</button>
+        <button type="button" id="bg-button">Checker bg</button>
+        <button type="button" id="click-through-button">Click-thru <kbd>X</kbd></button>
+        <button type="button" id="close-button">Close <kbd>Esc</kbd></button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
