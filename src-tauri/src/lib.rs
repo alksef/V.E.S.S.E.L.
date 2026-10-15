@@ -1,3 +1,4 @@
+pub mod config;
 pub mod health;
 pub mod mcp_server;
 pub mod server;

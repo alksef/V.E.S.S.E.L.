@@ -2,7 +2,34 @@ use std::sync::Arc;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
+use vessel_core::config::{AppConfig, ConfigStore, ViewConfig};
 use vessel_core::DomainService;
+
+#[tauri::command]
+fn load_config(store: tauri::State<'_, ConfigStore>) -> Result<AppConfig, String> {
+    store.load()
+}
+
+#[tauri::command]
+fn save_view_config(store: tauri::State<'_, ConfigStore>, view: ViewConfig) -> Result<(), String> {
+    store.save_view(view)
+}
+
+#[tauri::command]
+fn read_model(store: tauri::State<'_, ConfigStore>) -> Result<tauri::ipc::Response, String> {
+    Ok(tauri::ipc::Response::new(
+        store.read_model()?.unwrap_or_default(),
+    ))
+}
+
+#[tauri::command]
+fn save_model(
+    store: tauri::State<'_, ConfigStore>,
+    name: String,
+    data: Vec<u8>,
+) -> Result<(), String> {
+    store.save_model(name, data)
+}
 
 /// Lets the frontend toggle click-through so clicks pass from the avatar
 /// region onto the desktop underneath.
@@ -99,6 +126,19 @@ fn main() {
     let result = tauri::Builder::default()
         .manage(std::sync::Mutex::new(app_state))
         .setup(|app| {
+            let store = ConfigStore::new(app.path().config_dir()?.join("v.e.s.s.e.l."));
+            if let Ok(config) = store.load() {
+                if let Ok(preset) =
+                    serde_json::from_value(serde_json::Value::String(config.view.framing))
+                {
+                    app.state::<std::sync::Mutex<AppServerState>>()
+                        .lock()
+                        .unwrap()
+                        ._domain_service
+                        .set_framing(preset);
+                }
+            }
+            app.manage(store);
             let windows = app.webview_windows();
             for win in windows.values() {
                 let _ = win.set_skip_taskbar(true);
@@ -155,7 +195,13 @@ fn main() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![toggle_click_through])
+        .invoke_handler(tauri::generate_handler![
+            toggle_click_through,
+            load_config,
+            save_view_config,
+            read_model,
+            save_model
+        ])
         .build(tauri::generate_context!());
 
     match result {

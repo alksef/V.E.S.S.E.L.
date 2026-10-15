@@ -10,6 +10,7 @@ import {
 } from "./ws-client";
 import { SpeechPlayer } from "./speech-player";
 import { readSavedModel, saveModel, type SavedModel } from "./model-store";
+import { loadConfig, saveView } from "./config-store";
 
 const EMOTION_KEYS: Record<string, EmotionName> = {
   "1": "neutral",
@@ -96,8 +97,20 @@ function selectExpression(name: EmotionName, weight = 1.0): void {
   }
 }
 
-function selectFraming(preset: FramingPreset): void {
-  vrmScene.setFraming(preset);
+let configReady = false;
+
+function persistView(): void {
+  if (!configReady) return;
+  void saveView({ framing: vrmScene.getFraming(), distance: vrmScene.getZoomDistance() })
+    .catch((error: unknown) => {
+      console.warn("Cannot save camera settings:", error);
+      statusLine = "Cannot save camera settings. Check storage access.";
+      refreshStatus();
+    });
+}
+
+function selectFraming(preset: FramingPreset, instant = false): void {
+  vrmScene.setFraming(preset, instant);
   const isFullBody = preset === "full_body";
   zoomModelButton.textContent = isFullBody ? "Bust" : "Full body";
   zoomModelButton.title = isFullBody ? "Return to bust view" : "Show the entire model";
@@ -105,6 +118,7 @@ function selectFraming(preset: FramingPreset): void {
   for (const button of framingButtons) {
     button.classList.toggle("active", button.dataset.framing === preset);
   }
+  persistView();
 }
 
 function setTalkEnabled(enabled: boolean): void {
@@ -317,8 +331,14 @@ window.addEventListener("keydown", (event: KeyboardEvent) => {
 });
 
 togglePanelButton.addEventListener("click", () => togglePanel());
-zoomInButton.addEventListener("click", () => vrmScene.zoomBy(1 / 1.2));
-zoomOutButton.addEventListener("click", () => vrmScene.zoomBy(1.2));
+zoomInButton.addEventListener("click", () => {
+  vrmScene.zoomBy(1 / 1.2);
+  persistView();
+});
+zoomOutButton.addEventListener("click", () => {
+  vrmScene.zoomBy(1.2);
+  persistView();
+});
 zoomModelButton.addEventListener("click", () => {
   const preset = vrmScene.getFraming() === "full_body" ? "bust" : "full_body";
   selectFraming(preset);
@@ -398,7 +418,7 @@ function applySnapshot(snap: AvatarSnapshotPayload): void {
     externalGazeActive = true;
     animator?.setGazeTarget(snap.gaze.x, snap.gaze.y);
   }
-  if (snap.framing) {
+  if (snap.framing && snap.framing !== vrmScene.getFraming()) {
     selectFraming(snap.framing);
   }
 }
@@ -472,7 +492,18 @@ const wsClient = new AvatarWsClient({
 });
 
 
-wsClient.connect();
+async function initialize(): Promise<void> {
+  try {
+    const config = await loadConfig();
+    selectFraming(config.view.framing, true);
+    if (config.view.distance !== null) vrmScene.setZoomDistance(config.view.distance, true);
+  } catch (error) {
+    console.warn("Cannot restore camera settings:", error);
+  }
+  configReady = true;
+  wsClient.connect();
+  await loadAvatar();
+}
 
 window.addEventListener("pagehide", () => {
   speechPlayer.dispose();
@@ -482,4 +513,4 @@ window.addEventListener("pagehide", () => {
 });
 
 refreshStatus();
-void loadAvatar();
+void initialize();

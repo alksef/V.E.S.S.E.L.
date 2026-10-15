@@ -11,7 +11,8 @@
 | `ws_server.rs` | Producer/renderer, доставка команд и событий |
 | `src/ws-client.ts` | Соединение frontend и обработка команд |
 | `src/vrm-scene.ts`, `src/vrm-avatar.ts` | Сцена, камера и загрузка VRM |
-| `src/model-store.ts` | Локальное сохранение выбранной VRM в IndexedDB WebView |
+| `src/model-store.ts` | Сохранение VRM через Tauri, миграция из IndexedDB; IndexedDB для браузера |
+| `src/config-store.ts`, `src-tauri/src/config.rs` | JSON-конфиг и копия VRM в `%APPDATA%\v.e.s.s.e.l.\`, сохранение кадра и зума |
 | `src/animator.ts` | Поза, жесты, взгляд, мимика и липсинк |
 | `src/speech-player.ts` | Воспроизведение аудио и анализ громкости |
 | `src/main.ts`, `index.html` | Сборка frontend и управление окном |
@@ -28,6 +29,7 @@ MCP и producer-команды поступают в DomainService. Backend хр
 Контракты находятся в [интеграциях](../integrations/README.md).
 
 Файл VRM выбирается через системный file input и проверяется загрузчиком
-three-vrm до замены текущего аватара. Сохраняются имя и Blob модели;
+three-vrm до замены текущего аватара. В настольном приложении сохраняются
+копия VRM и её имя в JSON-конфиге, в браузере — имя и Blob в IndexedDB;
 при следующем запуске создаётся временный object URL. При ошибке предыдущая
 модель остаётся активной. В репозитории и frontend bundle VRM-файлов нет.

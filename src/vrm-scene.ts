@@ -48,6 +48,8 @@ export interface VrmScene {
   addFrameCallback(callback: FrameCallback): void;
   setFraming(preset: FramingPreset, instant?: boolean): void;
   getFraming(): FramingPreset;
+  getZoomDistance(): number;
+  setZoomDistance(distance: number, instant?: boolean): void;
   zoomBy(factor: number): void;
   dispose(): void;
 }
@@ -150,6 +152,19 @@ export function createVrmScene(canvas: HTMLCanvasElement): VrmScene {
       frameCallbacks.push(callback);
     },
     setFraming,
+    getZoomDistance(): number {
+      return goalCamPos.distanceTo(goalCamTarget);
+    },
+    setZoomDistance(distance: number, instant = false): void {
+      if (!Number.isFinite(distance) || distance < 0.35 || distance > 10) return;
+      const offset = goalCamPos.clone().sub(goalCamTarget).setLength(distance);
+      goalCamPos.copy(goalCamTarget).add(offset);
+      if (instant) {
+        currentCamPos.copy(goalCamPos);
+        camera.position.copy(currentCamPos);
+        camera.lookAt(currentCamTarget);
+      }
+    },
     zoomBy(factor: number): void {
       if (!Number.isFinite(factor) || factor <= 0) return;
       const offset = goalCamPos.clone().sub(goalCamTarget);
