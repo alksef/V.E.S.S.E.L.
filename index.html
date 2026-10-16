@@ -34,7 +34,7 @@
 
       #debug-panel {
         position: fixed;
-        left: 12px;
+        right: 12px;
         bottom: 12px;
         z-index: 10;
         display: flex;
@@ -48,6 +48,8 @@
         user-select: none;
         cursor: move;
         max-width: calc(100vw - 44px);
+        max-height: calc(100vh - 44px);
+        overflow-y: auto;
       }
 
       #debug-panel .row {
@@ -57,6 +59,7 @@
       }
 
       #debug-panel button {
+        box-sizing: border-box;
         padding: 4px 8px;
         border: 1px solid rgba(255, 255, 255, 0.22);
         border-radius: 6px;
@@ -98,8 +101,31 @@
         opacity: 0.9;
       }
 
-      #debug-panel.collapsed .row {
+      #debug-panel.collapsed {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+      }
+
+      #debug-panel.collapsed .row,
+      #debug-panel.collapsed #status,
+      #debug-panel.collapsed #panel-actions > :not(#toggle-panel-button) {
         display: none;
+      }
+
+      #debug-panel.collapsed #panel-header,
+      #debug-panel.collapsed #panel-actions {
+        width: 100%;
+        height: 100%;
+      }
+
+      #debug-panel.collapsed #toggle-panel-button {
+        width: 100%;
+        height: 100%;
+        border-radius: 10px;
+        font-size: 20px;
+        cursor: move;
+        touch-action: none;
       }
 
       #panel-header {
@@ -130,10 +156,7 @@
       <div id="panel-header">
         <div id="status">Initializing…</div>
         <div id="panel-actions">
-          <button type="button" id="zoom-out-button" title="Zoom out model" aria-label="Zoom out model">Zoom −</button>
-          <button type="button" id="zoom-in-button" title="Zoom in model" aria-label="Zoom in model">Zoom +</button>
-          <button type="button" id="zoom-model-button" title="Show the entire model" aria-pressed="false">Full body</button>
-          <button type="button" id="toggle-panel-button" title="Toggle panel (H)">−</button>
+          <button type="button" id="toggle-panel-button" title="Collapse panel (H)" aria-label="Collapse panel" aria-expanded="true">−</button>
         </div>
       </div>
       <div class="row">
@@ -153,14 +176,16 @@
         <button type="button" data-framing="bust" class="active">Bust</button>
         <button type="button" data-framing="half_body">Half</button>
         <button type="button" data-framing="full_body">Full</button>
+        <button type="button" id="zoom-out-button" title="Zoom out model" aria-label="Zoom out model">Zoom −</button>
+        <button type="button" id="zoom-in-button" title="Zoom in model" aria-label="Zoom in model">Zoom +</button>
       </div>
       <div class="row">
         <button type="button" id="blink-button">Blink <kbd>B</kbd></button>
         <button type="button" id="talk-button">Talk test <kbd>T</kbd></button>
         <button type="button" id="speak-demo-button">Speak demo</button>
         <button type="button" id="bg-button">Checker bg</button>
-        <button type="button" id="click-through-button">Click-thru <kbd>X</kbd></button>
-        <button type="button" id="close-button">Close <kbd>Esc</kbd></button>
+        <button type="button" id="click-through-button" aria-pressed="false" title="Pass clicks through the window. Disable from the tray menu.">Пропускать клики <kbd>X</kbd></button>
+        <button type="button" id="minimize-button" title="Hide window; restore from the tray">Свернуть в трей</button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

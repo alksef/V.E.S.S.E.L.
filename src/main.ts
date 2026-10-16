@@ -59,7 +59,6 @@ if (!isTauri) {
 const canvas = required<HTMLCanvasElement>("#avatar-canvas");
 const debugPanel = required<HTMLElement>("#debug-panel");
 const togglePanelButton = required<HTMLButtonElement>("#toggle-panel-button");
-const zoomModelButton = required<HTMLButtonElement>("#zoom-model-button");
 const zoomInButton = required<HTMLButtonElement>("#zoom-in-button");
 const zoomOutButton = required<HTMLButtonElement>("#zoom-out-button");
 const statusElement = required<HTMLElement>("#status");
@@ -111,10 +110,6 @@ function persistView(): void {
 
 function selectFraming(preset: FramingPreset, instant = false): void {
   vrmScene.setFraming(preset, instant);
-  const isFullBody = preset === "full_body";
-  zoomModelButton.textContent = isFullBody ? "Bust" : "Full body";
-  zoomModelButton.title = isFullBody ? "Return to bust view" : "Show the entire model";
-  zoomModelButton.setAttribute("aria-pressed", String(isFullBody));
   for (const button of framingButtons) {
     button.classList.toggle("active", button.dataset.framing === preset);
   }
@@ -166,7 +161,7 @@ async function activateModel(model: SavedModel, persist: boolean): Promise<void>
     externalGazeActive = false;
     externalLipsyncActive = false;
     remoteSpeaking = false;
-    statusLine = `Avatar ready — ${model.name}`;
+    statusLine = "Avatar ready";
     wsClient.sendReady(model.name);
   } catch (error) {
     candidateAnimator?.dispose();
@@ -209,7 +204,7 @@ modelFileInput.addEventListener("change", () => {
   }
   chooseModelButton.disabled = true;
   modelFileInput.disabled = true;
-  statusLine = `Loading ${file.name}…`;
+  statusLine = "Loading avatar…";
   refreshStatus();
   void activateModel({ name: file.name, data: file }, true)
     .catch((error: unknown) => {
@@ -245,6 +240,9 @@ window.addEventListener("mousemove", (event: MouseEvent) => {
 function togglePanel(): void {
   const isCollapsed = debugPanel.classList.toggle("collapsed");
   togglePanelButton.textContent = isCollapsed ? "+" : "−";
+  togglePanelButton.title = isCollapsed ? "Click to expand; drag to move avatar" : "Collapse panel (H)";
+  togglePanelButton.setAttribute("aria-label", isCollapsed ? "Expand panel" : "Collapse panel");
+  togglePanelButton.setAttribute("aria-expanded", String(!isCollapsed));
 }
 
 async function startTauriDrag(): Promise<void> {
@@ -257,33 +255,59 @@ async function startTauriDrag(): Promise<void> {
 }
 
 const clickThroughButton = document.querySelector<HTMLButtonElement>("#click-through-button");
-const closeButton = document.querySelector<HTMLButtonElement>("#close-button");
+const minimizeButton = document.querySelector<HTMLButtonElement>("#minimize-button");
 
-async function closeWindow(): Promise<void> {
+async function minimizeToTray(): Promise<void> {
   try {
-    const tauri = (window as unknown as { __TAURI__?: { window?: { getCurrentWindow?: () => { close?: () => Promise<void> } } } }).__TAURI__;
-    if (tauri?.window?.getCurrentWindow?.()?.close) {
-      await tauri.window.getCurrentWindow()!.close!();
-      return;
-    }
-  } catch {
-    // ignore
+    const tauri = (window as unknown as { __TAURI__?: { window?: { getCurrentWindow?: () => { hide?: () => Promise<void> } } } }).__TAURI__;
+    await tauri?.window?.getCurrentWindow?.()?.hide?.();
+  } catch (error) {
+    console.warn("Cannot minimize to tray:", error);
   }
-  window.close();
+}
+
+function reflectClickThrough(ignore: boolean): void {
+  clickThroughEnabled = ignore;
+  clickThroughButton?.classList.toggle("active", ignore);
+  clickThroughButton?.setAttribute("aria-pressed", String(ignore));
 }
 
 async function setClickThrough(ignore: boolean): Promise<void> {
-  clickThroughEnabled = ignore;
-  clickThroughButton?.classList.toggle("active", ignore);
   try {
     const tauri = (window as unknown as { __TAURI__?: { core?: { invoke?: (cmd: string, args: Record<string, unknown>) => Promise<void> } } }).__TAURI__;
     if (tauri?.core?.invoke) {
       await tauri.core.invoke("toggle_click_through", { ignore });
+      reflectClickThrough(ignore);
     }
   } catch (err) {
     console.warn("Failed to toggle click-through:", err);
+    statusLine = "Cannot change click-through. Try the tray menu.";
+    refreshStatus();
   }
 }
+
+if (!isTauri) {
+  if (clickThroughButton) clickThroughButton.disabled = true;
+  if (minimizeButton) minimizeButton.disabled = true;
+}
+
+// A click expands the compact handle; crossing the drag threshold moves the window.
+let handlePress: { x: number; y: number; dragged: boolean } | null = null;
+togglePanelButton.addEventListener("pointerdown", (event) => {
+  if (event.button !== 0 || !debugPanel.classList.contains("collapsed")) return;
+  handlePress = { x: event.clientX, y: event.clientY, dragged: false };
+  togglePanelButton.setPointerCapture(event.pointerId);
+});
+togglePanelButton.addEventListener("pointermove", (event) => {
+  if (!handlePress || handlePress.dragged) return;
+  if (Math.hypot(event.clientX - handlePress.x, event.clientY - handlePress.y) < 5) return;
+  handlePress.dragged = true;
+  togglePanelButton.releasePointerCapture(event.pointerId);
+  void startTauriDrag();
+});
+togglePanelButton.addEventListener("pointercancel", () => {
+  if (!handlePress?.dragged) handlePress = null;
+});
 
 const dragHandle = document.querySelector<HTMLElement>("#drag-handle");
 dragHandle?.addEventListener("mousedown", (e) => {
@@ -320,8 +344,6 @@ window.addEventListener("keydown", (event: KeyboardEvent) => {
     animator?.triggerGesture("shrug");
   } else if (event.key === "x" || event.key === "X") {
     void setClickThrough(!clickThroughEnabled);
-  } else if (event.key === "Escape") {
-    void closeWindow();
   } else if (event.key === "f" || event.key === "F") {
     const currentIndex = FRAMING_CYCLE.indexOf(vrmScene.getFraming());
     const nextPreset = FRAMING_CYCLE[(currentIndex + 1) % FRAMING_CYCLE.length];
@@ -330,7 +352,11 @@ window.addEventListener("keydown", (event: KeyboardEvent) => {
   }
 });
 
-togglePanelButton.addEventListener("click", () => togglePanel());
+togglePanelButton.addEventListener("click", (event) => {
+  const dragged = event.detail > 0 && handlePress?.dragged;
+  handlePress = null;
+  if (!dragged) togglePanel();
+});
 zoomInButton.addEventListener("click", () => {
   vrmScene.zoomBy(1 / 1.2);
   persistView();
@@ -339,13 +365,8 @@ zoomOutButton.addEventListener("click", () => {
   vrmScene.zoomBy(1.2);
   persistView();
 });
-zoomModelButton.addEventListener("click", () => {
-  const preset = vrmScene.getFraming() === "full_body" ? "bust" : "full_body";
-  selectFraming(preset);
-  wsClient.send({ type: "framing", preset });
-});
 clickThroughButton?.addEventListener("click", () => void setClickThrough(!clickThroughEnabled));
-closeButton?.addEventListener("click", () => void closeWindow());
+minimizeButton?.addEventListener("click", () => void minimizeToTray());
 
 for (const button of expressionButtons) {
   button.addEventListener("click", () => {
@@ -466,9 +487,9 @@ const wsClient = new AvatarWsClient({
     onStatus(status) {
       connectionLine =
         status === "online"
-          ? `live · ${wsClient.endpoint}`
+          ? "live"
           : status === "connecting"
-            ? `connecting ${wsClient.endpoint}`
+            ? "connecting"
             : "backend offline — standalone mode";
       refreshStatus();
     },
@@ -493,6 +514,16 @@ const wsClient = new AvatarWsClient({
 
 
 async function initialize(): Promise<void> {
+  const tauri = (window as unknown as { __TAURI__?: {
+    event?: { listen: (name: string, handler: (event: { payload: boolean }) => void) => Promise<() => void> };
+    core?: { invoke: <T>(command: string) => Promise<T> };
+  } }).__TAURI__;
+  try {
+    await tauri?.event?.listen("click-through-changed", (event) => reflectClickThrough(event.payload));
+    if (tauri?.core) reflectClickThrough(await tauri.core.invoke<boolean>("get_click_through"));
+  } catch (error) {
+    console.warn("Cannot listen for tray settings:", error);
+  }
   try {
     const config = await loadConfig();
     selectFraming(config.view.framing, true);

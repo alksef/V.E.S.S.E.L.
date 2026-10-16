@@ -1,7 +1,7 @@
 use std::sync::Arc;
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use vessel_core::config::{AppConfig, ConfigStore, ViewConfig};
 use vessel_core::DomainService;
 
@@ -35,7 +35,23 @@ fn save_model(
 /// region onto the desktop underneath.
 #[tauri::command]
 fn toggle_click_through(window: tauri::WebviewWindow, ignore: bool) -> Result<(), tauri::Error> {
-    window.set_ignore_cursor_events(ignore)
+    set_click_through(window.app_handle(), ignore)
+}
+
+struct ClickThroughMenu(CheckMenuItem<tauri::Wry>);
+
+#[tauri::command]
+fn get_click_through(app: tauri::AppHandle) -> Result<bool, tauri::Error> {
+    app.state::<ClickThroughMenu>().0.is_checked()
+}
+
+fn set_click_through(app: &tauri::AppHandle, ignore: bool) -> Result<(), tauri::Error> {
+    if let Some(win) = app.get_webview_window("main") {
+        win.set_ignore_cursor_events(ignore)?;
+        app.state::<ClickThroughMenu>().0.set_checked(ignore)?;
+        win.emit("click-through-changed", ignore)?;
+    }
+    Ok(())
 }
 
 fn toggle_main_window(app: &tauri::AppHandle) {
@@ -154,7 +170,16 @@ fn main() {
                 None::<&str>,
             )?;
             let quit_item = MenuItem::with_id(app, "quit", "Выход", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
+            let click_through_item = CheckMenuItem::with_id(
+                app,
+                "click_through",
+                "Пропускать клики",
+                true,
+                false,
+                None::<&str>,
+            )?;
+            let menu = Menu::with_items(app, &[&toggle_item, &click_through_item, &quit_item])?;
+            app.manage(ClickThroughMenu(click_through_item));
 
             let icon = app.default_window_icon().cloned().unwrap_or_else(|| {
                 tauri::image::Image::from_bytes(include_bytes!("../icons/icon.ico"))
@@ -169,6 +194,15 @@ fn main() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "toggle_visibility" => {
                         toggle_main_window(app);
+                    }
+                    "click_through" => {
+                        // Native check menu items already toggle before this callback.
+                        if let Ok(ignore) = app.state::<ClickThroughMenu>().0.is_checked() {
+                            if let Err(error) = set_click_through(app, ignore) {
+                                let _ = app.state::<ClickThroughMenu>().0.set_checked(!ignore);
+                                eprintln!("Cannot toggle click-through: {error}");
+                            }
+                        }
                     }
                     "quit" => {
                         app.exit(0);
@@ -197,6 +231,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             toggle_click_through,
+            get_click_through,
             load_config,
             save_view_config,
             read_model,
