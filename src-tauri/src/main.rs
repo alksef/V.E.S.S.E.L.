@@ -181,10 +181,7 @@ fn main() {
             let menu = Menu::with_items(app, &[&toggle_item, &click_through_item, &quit_item])?;
             app.manage(ClickThroughMenu(click_through_item));
 
-            let icon = app.default_window_icon().cloned().unwrap_or_else(|| {
-                tauri::image::Image::from_bytes(include_bytes!("../icons/icon.ico"))
-                    .expect("Failed to load tray icon")
-            });
+            let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/icon.png"))?;
 
             let _tray = TrayIconBuilder::with_id("main-tray")
                 .icon(icon)

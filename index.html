@@ -120,12 +120,32 @@
       }
 
       #debug-panel.collapsed #toggle-panel-button {
+        position: relative;
         width: 100%;
         height: 100%;
+        padding: 0;
         border-radius: 10px;
-        font-size: 20px;
+        font-size: 0;
         cursor: move;
         touch-action: none;
+      }
+
+      #debug-panel.collapsed #toggle-panel-button::before,
+      #debug-panel.collapsed #toggle-panel-button::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 12px;
+        height: 2px;
+        border-radius: 1px;
+        background: currentColor;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
+
+      #debug-panel.collapsed #toggle-panel-button::after {
+        transform: translate(-50%, -50%) rotate(90deg);
       }
 
       #panel-header {
