@@ -34,7 +34,7 @@ it("restores the target zoom even when saved during a camera transition", () => 
   restored.setZoomDistance(distance, true);
   expect(restored.camera.position.distanceTo(original.camera.position)).toBeGreaterThan(1);
   expect(restored.getZoomDistance()).toBeCloseTo(distance);
-  expect(restored.camera.position.y).toBeCloseTo(0.5 + 0.05 / 1.2 ** 2);
+  expect(restored.camera.position.y).toBeCloseTo(0.8 + 0.05 / 1.2 ** 2);
   expect(restored.camera.position.z).toBeCloseTo(4.8 / 1.2 ** 2);
 
   restored.zoomBy(100);

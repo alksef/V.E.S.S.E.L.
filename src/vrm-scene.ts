@@ -31,9 +31,9 @@ const FRAMING_CONFIGS: Record<FramingPreset, FramingConfig> = {
   },
   full_body: {
     // Full body long shot from head to toes
-    // Keep the entire avatar above the expanded control panel.
-    position: new THREE.Vector3(0, 0.55, 4.8),
-    target: new THREE.Vector3(0, 0.5, 0),
+    // Aim near the body center so zooming keeps the head inside the frame.
+    position: new THREE.Vector3(0, 0.85, 4.8),
+    target: new THREE.Vector3(0, 0.8, 0),
     fov: 34,
   },
 };
