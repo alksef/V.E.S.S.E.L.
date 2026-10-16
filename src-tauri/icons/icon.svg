@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>VESSEL — vessel and spark</title>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#171e30"/>
+  <path d="M13 19 L28 49 Q32 56 36 49 L51 19" fill="none" stroke="#66e4da" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 10 L40 22 L32 34 L24 22 Z" fill="#b5a0ff"/>
+  <circle cx="30" cy="20" r="2" fill="#fff"/>
+</svg>
